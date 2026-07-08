@@ -1,14 +1,11 @@
 package com.retail.rewards.controller;
 
 import com.retail.rewards.model.RewardSummary;
-import com.retail.rewards.model.Transaction;
 import com.retail.rewards.service.RewardsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/rewards")
@@ -31,9 +28,4 @@ public class RewardsController {
     }
 
 
-    @GetMapping("/customers")
-    public ResponseEntity<List<Transaction>> getAllTransactions() {
-        List<Transaction> transactions = service.getAllTransactions();
-        return ResponseEntity.ok(transactions);
-    }
 }

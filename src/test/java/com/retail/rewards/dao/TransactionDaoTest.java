@@ -11,11 +11,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TransactionDaoTest {
 
-    private TransactionDao dao;
+    private TransactionDaoImpl dao;
 
     @BeforeEach
     void setUp() {
-        dao = new TransactionDao();
+        dao = new TransactionDaoImpl();
         dao.initData(); // populate with sample data
     }
 

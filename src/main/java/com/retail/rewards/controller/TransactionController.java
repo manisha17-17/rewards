@@ -3,6 +3,7 @@ package com.retail.rewards.controller;
 
 import com.retail.rewards.model.Transaction;
 import com.retail.rewards.service.RewardsService;
+import com.retail.rewards.service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,7 @@ import java.util.List;
 public class TransactionController {
 
     @Autowired
-    private RewardsService service;
+    private TransactionService service;
 
     @PostMapping("/transaction")
     public ResponseEntity<Transaction> addTransaction(@RequestBody Transaction transaction) {
@@ -29,6 +30,12 @@ public class TransactionController {
         if (transactions.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(transactions);
+    }
+
+    @GetMapping("/customers")
+    public ResponseEntity<List<Transaction>> getAllTransactions() {
+        List<Transaction> transactions = service.getAllTransactions();
         return ResponseEntity.ok(transactions);
     }
 }
