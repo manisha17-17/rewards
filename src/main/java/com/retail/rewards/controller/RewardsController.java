@@ -30,21 +30,6 @@ public class RewardsController {
         return ResponseEntity.ok(summary);
     }
 
-    @PostMapping("/transaction")
-    public ResponseEntity<Transaction> addTransaction(@RequestBody Transaction transaction) {
-        Transaction saved = service.saveTransaction(transaction);
-        return ResponseEntity.ok(saved);
-    }
-
-    @GetMapping("/{customerId}/transactions")
-    public ResponseEntity<List<Transaction>> getTransactionsByCustomerId(
-            @PathVariable String customerId) {
-        List<Transaction> transactions = service.getTransactionsByCustomerId(customerId);
-        if (transactions.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(transactions);
-    }
 
     @GetMapping("/customers")
     public ResponseEntity<List<Transaction>> getAllTransactions() {
