@@ -91,19 +91,32 @@ Retrieves the points earned per month and the overall total within a specific da
 
 #### Example Request
 ```http
-GET http://localhost:8080/api/rewards/CUST-001?startDate=2026-01-01&endDate=2026-03-31
+GET http://localhost:8080/api/rewards/CUST2?startDate=2026-01-01&endDate=2026-03-31
 ```
 
 #### Example Response
 ```json
 {
-  "customerId": "CUST-001",
-  "monthlyPoints": {
-    "JANUARY": 140,
-    "FEBRUARY": 90,
-    "MARCH": 210
-  },
-  "totalPoints": 440
+    "customerId": "CUST2",
+    "monthlyPoints": {
+        "FEBRUARY": 110,
+        "JANUARY": 45
+    },
+    "totalPoints": 155,
+    "transactions": [
+        {
+            "id": 4,
+            "customerId": "CUST2",
+            "amount": 95.0,
+            "date": "2026-01-20"
+        },
+        {
+            "id": 5,
+            "customerId": "CUST2",
+            "amount": 130.0,
+            "date": "2026-02-25"
+        }
+    ]
 }
 ```
 
