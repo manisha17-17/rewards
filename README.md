@@ -115,6 +115,7 @@ Allows manual record entry to dynamically verify calculation rules.
 #### Example Request Body
 ```json
 {
+  "id": 5
   "customerId": "CUST-001",
   "amount": 120.00,
   "transactionDate": "2026-03-15"
