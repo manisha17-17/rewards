@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 @Repository
-public class TransactionDaoImpl implements TransactionDao{
+public class TransactionDaoImpl implements TransactionDao {
 
     private final Map<String, List<Transaction>> transactionStore = new HashMap<>();
 
@@ -27,6 +27,7 @@ public class TransactionDaoImpl implements TransactionDao{
                 new Transaction(5L, "CUST2", 130.0, LocalDate.of(2026, 2, 25))
         )));
     }
+
     @Override
     public Transaction addTransaction(Transaction transaction) {
         transactionStore
@@ -40,6 +41,15 @@ public class TransactionDaoImpl implements TransactionDao{
         return transactionStore.values()
                 .stream()
                 .flatMap(List::stream)
+                .toList();
+    }
+
+    @Override
+    public List<Transaction> getAllTransactionsInDateRange(LocalDate start, LocalDate end) {
+        return transactionStore.values()
+                .stream()
+                .flatMap(List::stream)
+                .filter(tx -> !tx.getDate().isBefore(start) && !tx.getDate().isAfter(end))
                 .toList();
     }
 

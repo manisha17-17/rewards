@@ -8,7 +8,12 @@ import java.util.List;
 public interface TransactionDao {
 
     Transaction addTransaction(Transaction transaction);
+
     List<Transaction> getAllTransactions();
+
     List<Transaction> getTransactionsByCustomerId(String customerId);
+
     List<Transaction> getTransactions(String customerId, LocalDate start, LocalDate end);
+
+    List<Transaction> getAllTransactionsInDateRange(LocalDate start, LocalDate end);
 }

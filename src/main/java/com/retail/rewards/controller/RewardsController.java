@@ -5,7 +5,9 @@ import com.retail.rewards.service.RewardsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/rewards")
@@ -25,6 +27,18 @@ public class RewardsController {
 
         RewardSummary summary = service.calculateRewards(customerId, start, end);
         return ResponseEntity.ok(summary);
+    }
+
+    @GetMapping("/allCustomers")
+    public ResponseEntity<List<RewardSummary>> getAllRewards(
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+
+        List<RewardSummary> summaries = service.calculateAllRewards(start, end);
+        return ResponseEntity.ok(summaries);
     }
 
 

@@ -15,7 +15,6 @@ public class TransactionService {
     private TransactionDao transactionDao;
 
 
-
     public List<Transaction> getAllTransactions() {
         return transactionDao.getAllTransactions();
     }
