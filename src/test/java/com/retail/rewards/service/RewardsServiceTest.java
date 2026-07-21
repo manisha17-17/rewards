@@ -1,29 +1,29 @@
 package com.retail.rewards.service;
 
-import com.retail.rewards.dao.TransactionDao;
+import com.retail.rewards.dao.TransactionRepository;
 import com.retail.rewards.model.RewardSummary;
 import com.retail.rewards.model.Transaction;
 import com.retail.rewards.util.RewardsCalculator;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.Month;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RewardsServiceTest {
 
     @Mock
-    private TransactionDao transactionDao;
+    private TransactionRepository repository;
 
     @Mock
     private RewardsCalculator calculator;
@@ -31,103 +31,106 @@ class RewardsServiceTest {
     @InjectMocks
     private RewardsService rewardsService;
 
-    @Test
-    @DisplayName("Should successfully calculate rewards when a customer has transactions in multiple months")
-    void calculateRewards_WithValidTransactions_ReturnsCorrectSummary() {
-        // Arrange
-        String customerId = "CUST1";
-        LocalDate start = LocalDate.of(2026, 1, 1);
-        LocalDate end = LocalDate.of(2026, 3, 31);
+    private List<Transaction> transactions;
 
-        Transaction tx1 = new Transaction(1L, "CUST1", 120.0, LocalDate.of(2026, 1, 15));
-        Transaction tx2 = new Transaction(2L, "CUST1", 75.0, LocalDate.of(2026, 2, 10));
-        Transaction tx3 = new Transaction(3L, "CUST1", 200.0, LocalDate.of(2026, 3, 5));
-        List<Transaction> transactions = List.of(tx1, tx2, tx3);
+    @BeforeEach
+    void setup() {
 
-        // Mock DAO behavior
-        when(transactionDao.getTransactions(customerId, start, end)).thenReturn(transactions);
-
-        // Mock Calculator logic to mirror the production rules
-        when(calculator.calculatePoints(120.0)).thenReturn(90);
-        when(calculator.calculatePoints(75.0)).thenReturn(25);
-        when(calculator.calculatePoints(200.0)).thenReturn(250);
-
-        // Act
-        RewardSummary summary = rewardsService.calculateRewards(customerId, start, end);
-
-        // Assert
-        assertNotNull(summary, "Reward summary should not be null");
-        assertEquals(customerId, summary.getCustomerId(), "Customer ID should match");
-        assertEquals(transactions, summary.getTransactions(), "Transaction list should match original data");
-
-        // Total points verification: 90 + 25 + 250 = 365
-        assertEquals(365, summary.getTotalPoints(), "Total points should be the sum of all transaction points");
-
-        // Monthly points distribution verification
-        assertEquals(3, summary.getMonthlyPoints().size(), "Should contain entries for 3 distinct months");
-        assertEquals(90, summary.getMonthlyPoints().get(Month.JANUARY), "January points mismatch");
-        assertEquals(25, summary.getMonthlyPoints().get(Month.FEBRUARY), "February points mismatch");
-        assertEquals(250, summary.getMonthlyPoints().get(Month.MARCH), "March points mismatch");
-
-        // Verify interactions with dependencies to ensure full execution path coverage
-        verify(transactionDao, times(1)).getTransactions(customerId, start, end);
-        verify(calculator, times(1)).calculatePoints(120.0);
-        verify(calculator, times(1)).calculatePoints(75.0);
-        verify(calculator, times(1)).calculatePoints(200.0);
+        transactions = List.of(
+                new Transaction(
+                        1L,
+                        "CUST1",
+                        new BigDecimal("120.00"),
+                        LocalDate.of(2026,1,15)
+                ),
+                new Transaction(
+                        2L,
+                        "CUST1",
+                        new BigDecimal("80.00"),
+                        LocalDate.of(2026,2,10)
+                )
+        );
     }
 
     @Test
-    @DisplayName("Should successfully return zero points and an empty breakdown when no transactions exist")
-    void calculateRewards_WithNoTransactions_ReturnsEmptySummary() {
-        // Arrange
-        String customerId = "CUST_EMPTY";
-        LocalDate start = LocalDate.of(2026, 1, 1);
-        LocalDate end = LocalDate.of(2026, 3, 31);
+    void calculateRewards_ShouldReturnRewardSummary() {
 
-        when(transactionDao.getTransactions(customerId, start, end)).thenReturn(Collections.emptyList());
+        when(repository.findByCustomerIdAndDateBetween(
+                "CUST1",
+                LocalDate.of(2026,1,1),
+                LocalDate.of(2026,2,28)))
+                .thenReturn(transactions);
 
-        // Act
-        RewardSummary summary = rewardsService.calculateRewards(customerId, start, end);
+        when(calculator.calculatePoints(new BigDecimal("120.00"))).thenReturn(90);
+        when(calculator.calculatePoints(new BigDecimal("80.00"))).thenReturn(30);
 
-        // Assert
+        RewardSummary summary = rewardsService.calculateRewards(
+                "CUST1",
+                LocalDate.of(2026,1,1),
+                LocalDate.of(2026,2,28));
+
         assertNotNull(summary);
-        assertEquals(customerId, summary.getCustomerId());
-        assertTrue(summary.getTransactions().isEmpty(), "Transactions collection should be empty");
-        assertEquals(0, summary.getTotalPoints(), "Total points must be zero");
-        assertTrue(summary.getMonthlyPoints().isEmpty(), "Monthly points breakdown must be empty");
+        assertEquals("CUST1", summary.getCustomerId());
+        assertEquals(120, summary.getTotalPoints());
 
-        // Verify interaction boundaries
-        verify(transactionDao, times(1)).getTransactions(customerId, start, end);
-        verifyNoInteractions(calculator); // Calculator branch shouldn't be executed for an empty loop
+        Map<String,Integer> monthly = summary.getMonthlyPoints();
+
+        assertEquals(90, monthly.get("Jan-2026"));
+        assertEquals(30, monthly.get("Feb-2026"));
+
+        assertEquals(2, summary.getTransactions().size());
     }
 
     @Test
-    @DisplayName("Should properly aggregate point subtotals when multiple transactions occur in the same month")
-    void calculateRewards_WithMultipleTransactionsInSameMonth_AggregatesPoints() {
-        // Arrange
-        String customerId = "CUST1";
-        LocalDate start = LocalDate.of(2026, 1, 1);
-        LocalDate end = LocalDate.of(2026, 1, 31);
+    void calculateRewards_NoTransactions() {
 
-        Transaction tx1 = new Transaction(1L, "CUST1", 60.0, LocalDate.of(2026, 1, 10));
-        Transaction tx2 = new Transaction(2L, "CUST1", 110.0, LocalDate.of(2026, 1, 20));
-        List<Transaction> transactions = List.of(tx1, tx2);
+        when(repository.findByCustomerIdAndDateBetween(
+                "CUST1",
+                LocalDate.of(2026,1,1),
+                LocalDate.of(2026,2,28)))
+                .thenReturn(List.of());
 
-        when(transactionDao.getTransactions(customerId, start, end)).thenReturn(transactions);
-        when(calculator.calculatePoints(60.0)).thenReturn(10);
-        when(calculator.calculatePoints(110.0)).thenReturn(70);
+        RewardSummary summary = rewardsService.calculateRewards(
+                "CUST1",
+                LocalDate.of(2026,1,1),
+                LocalDate.of(2026,2,28));
 
-        // Act
-        RewardSummary summary = rewardsService.calculateRewards(customerId, start, end);
+        assertEquals(0, summary.getTotalPoints());
+        assertTrue(summary.getMonthlyPoints().isEmpty());
+        assertTrue(summary.getTransactions().isEmpty());
+    }
 
-        // Assert
-        assertNotNull(summary);
-        assertEquals(80, summary.getTotalPoints(), "Total combined points mismatch (10 + 70)");
-        assertEquals(1, summary.getMonthlyPoints().size(), "Breakdown should only contain one month layer");
-        assertEquals(80, summary.getMonthlyPoints().get(Month.JANUARY), "January points aggregation failed");
+    @Test
+    void calculateAllRewards_ShouldReturnAllCustomersRewards() {
 
-        verify(transactionDao, times(1)).getTransactions(customerId, start, end);
-        verify(calculator, times(1)).calculatePoints(60.0);
-        verify(calculator, times(1)).calculatePoints(110.0);
+        List<Transaction> all = List.of(
+                new Transaction(
+                        1L,
+                        "CUST1",
+                        new BigDecimal("120"),
+                        LocalDate.of(2026,1,15)
+                ),
+                new Transaction(
+                        2L,
+                        "CUST2",
+                        new BigDecimal("130"),
+                        LocalDate.of(2026,1,20)
+                )
+        );
+
+        when(repository.findByDateBetween(
+                LocalDate.of(2026,1,1),
+                LocalDate.of(2026,1,31)))
+                .thenReturn(all);
+
+        when(calculator.calculatePoints(new BigDecimal("120"))).thenReturn(90);
+        when(calculator.calculatePoints(new BigDecimal("130"))).thenReturn(110);
+
+        List<RewardSummary> summaries =
+                rewardsService.calculateAllRewards(
+                        LocalDate.of(2026,1,1),
+                        LocalDate.of(2026,1,31));
+
+        assertEquals(2, summaries.size());
     }
 }

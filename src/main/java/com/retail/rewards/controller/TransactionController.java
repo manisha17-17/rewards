@@ -1,41 +1,65 @@
 package com.retail.rewards.controller;
 
-
 import com.retail.rewards.model.Transaction;
-import com.retail.rewards.service.RewardsService;
 import com.retail.rewards.service.TransactionService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/transactions")
+@Validated
+@Slf4j
 public class TransactionController {
 
-    @Autowired
-    private TransactionService service;
+    private final TransactionService service;
 
-    @PostMapping("/transaction")
-    public ResponseEntity<Transaction> addTransaction(@RequestBody Transaction transaction) {
-        Transaction saved = service.saveTransaction(transaction);
-        return ResponseEntity.ok(saved);
+    public TransactionController(TransactionService service) {
+        this.service = service;
     }
 
-    @GetMapping("/{customerId}/transactions")
+    @PostMapping
+    public ResponseEntity<Transaction> addTransaction(
+            @Valid @RequestBody Transaction transaction) {
+
+        log.info("Adding transaction for customer {}", transaction.getCustomerId());
+
+        Transaction saved = service.saveTransaction(transaction);
+
+        return ResponseEntity
+                .created(URI.create("/api/transactions/" + saved.getId()))
+                .body(saved);
+    }
+
+    @GetMapping("/{customerId}")
     public ResponseEntity<List<Transaction>> getTransactionsByCustomerId(
-            @PathVariable String customerId) {
-        List<Transaction> transactions = service.getTransactionsByCustomerId(customerId);
+            @PathVariable
+            @NotBlank(message = "Customer ID is required")
+            String customerId) {
+
+        log.info("Fetching transactions for customer {}", customerId);
+
+        List<Transaction> transactions =
+                service.getTransactionsByCustomerId(customerId);
+
         if (transactions.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         return ResponseEntity.ok(transactions);
     }
 
-    @GetMapping("/customers")
+    @GetMapping
     public ResponseEntity<List<Transaction>> getAllTransactions() {
-        List<Transaction> transactions = service.getAllTransactions();
-        return ResponseEntity.ok(transactions);
+
+        log.info("Fetching all transactions");
+
+        return ResponseEntity.ok(service.getAllTransactions());
     }
 }

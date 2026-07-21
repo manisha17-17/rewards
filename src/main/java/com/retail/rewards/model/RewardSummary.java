@@ -2,16 +2,22 @@ package com.retail.rewards.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.Month;
 import java.util.List;
 import java.util.Map;
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class RewardSummary {
+
     private String customerId;
-    private Map<Month, Integer> monthlyPoints;
+
+    // Example: {"Jan-2026": 90, "Feb-2026": 25}
+    private Map<String, Integer> monthlyPoints;
+
     private int totalPoints;
+
     private List<Transaction> transactions;
 }

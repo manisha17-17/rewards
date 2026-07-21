@@ -2,8 +2,10 @@ package com.retail.rewards.controller;
 
 import com.retail.rewards.model.RewardSummary;
 import com.retail.rewards.service.RewardsService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.constraints.NotBlank;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -11,35 +13,59 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/rewards")
+@Validated
+@Slf4j
 public class RewardsController {
 
-    @Autowired
-    private RewardsService service;
+    private final RewardsService service;
+
+    public RewardsController(RewardsService service) {
+        this.service = service;
+    }
 
     @GetMapping("/{customerId}")
     public ResponseEntity<RewardSummary> getRewards(
-            @PathVariable String customerId,
-            @RequestParam String startDate,
-            @RequestParam String endDate) {
 
-        LocalDate start = LocalDate.parse(startDate);
-        LocalDate end = LocalDate.parse(endDate);
+            @PathVariable
+            @NotBlank(message = "Customer ID is required")
+            String customerId,
 
-        RewardSummary summary = service.calculateRewards(customerId, start, end);
+            @RequestParam LocalDate startDate,
+
+            @RequestParam LocalDate endDate) {
+
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException(
+                    "Start date must not be after end date.");
+        }
+
+        log.info("Fetching rewards for customer {} from {} to {}",
+                customerId, startDate, endDate);
+
+        RewardSummary summary =
+                service.calculateRewards(customerId, startDate, endDate);
+
         return ResponseEntity.ok(summary);
     }
 
-    @GetMapping("/allCustomers")
+    @GetMapping
     public ResponseEntity<List<RewardSummary>> getAllRewards(
-            @RequestParam String startDate,
-            @RequestParam String endDate) {
 
-        LocalDate start = LocalDate.parse(startDate);
-        LocalDate end = LocalDate.parse(endDate);
+            @RequestParam LocalDate startDate,
 
-        List<RewardSummary> summaries = service.calculateAllRewards(start, end);
+            @RequestParam LocalDate endDate) {
+
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException(
+                    "Start date must not be after end date.");
+        }
+
+        log.info("Fetching rewards for all customers from {} to {}",
+                startDate, endDate);
+
+        List<RewardSummary> summaries =
+                service.calculateAllRewards(startDate, endDate);
+
         return ResponseEntity.ok(summaries);
     }
-
-
 }

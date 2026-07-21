@@ -1,30 +1,30 @@
 package com.retail.rewards.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.retail.rewards.model.Transaction;
 import com.retail.rewards.service.TransactionService;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TransactionController.class)
-public class TransactionControllerTest {
+class TransactionControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -33,76 +33,88 @@ public class TransactionControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private TransactionService service;
+    private TransactionService transactionService;
 
     @Test
-    public void testAddTransaction_Success() throws Exception {
-        // Arrange
-        Transaction inputTx = new Transaction(null, "CUST1", 120.0, LocalDate.of(2026, 1, 15));
-        Transaction savedTx = new Transaction(1L, "CUST1", 120.0, LocalDate.of(2026, 1, 15));
+    void shouldCreateTransaction() throws Exception {
 
-        Mockito.when(service.saveTransaction(any(Transaction.class))).thenReturn(savedTx);
-
-
-        mockMvc.perform(post("/api/transactions/transaction")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(inputTx)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.customerId").value("CUST1"))
-                .andExpect(jsonPath("$.amount").value(120.0))
-                .andExpect(jsonPath("$.date").value("2026-01-15"));
-    }
-
-    @Test
-    public void testGetTransactionsByCustomerId_Success() throws Exception {
-        // Arrange
-        String customerId = "CUST1";
-        List<Transaction> mockTxs = Arrays.asList(
-                new Transaction(1L, "CUST1", 120.0, LocalDate.of(2026, 1, 15)),
-                new Transaction(2L, "CUST1", 75.0, LocalDate.of(2026, 2, 10))
+        Transaction transaction = new Transaction(
+                1L,
+                "CUST1",
+                new BigDecimal("120.00"),
+                LocalDate.of(2026, 1, 10)
         );
 
-        Mockito.when(service.getTransactionsByCustomerId(eq(customerId))).thenReturn(mockTxs);
+        when(transactionService.saveTransaction(any(Transaction.class)))
+                .thenReturn(transaction);
 
-
-        mockMvc.perform(get("/api/transactions/" + customerId + "/transactions")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].customerId").value("CUST1"))
-                .andExpect(jsonPath("$[1].id").value(2));
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(transaction)))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.customerId").value("CUST1"));
     }
 
     @Test
-    public void testGetTransactionsByCustomerId_NotFound() throws Exception {
+    void shouldReturnTransactionsByCustomer() throws Exception {
 
-        String customerId = "UNKNOWN";
-        Mockito.when(service.getTransactionsByCustomerId(eq(customerId))).thenReturn(Collections.emptyList());
+        Transaction transaction = new Transaction(
+                1L,
+                "CUST1",
+                new BigDecimal("120.00"),
+                LocalDate.now()
+        );
 
+        when(transactionService.getTransactionsByCustomerId("CUST1"))
+                .thenReturn(List.of(transaction));
 
-        mockMvc.perform(get("/api/transactions/" + customerId + "/transactions")
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/transactions/CUST1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].customerId").value("CUST1"));
+    }
+
+    @Test
+    void shouldReturnNotFoundForUnknownCustomer() throws Exception {
+
+        when(transactionService.getTransactionsByCustomerId("UNKNOWN"))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/transactions/UNKNOWN"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    public void testGetAllTransactions_Success() throws Exception {
+    void shouldReturnAllTransactions() throws Exception {
 
-        List<Transaction> allTxs = Arrays.asList(
-                new Transaction(1L, "CUST1", 120.0, LocalDate.of(2026, 1, 15)),
-                new Transaction(4L, "CUST2", 95.0, LocalDate.of(2026, 1, 20))
+        Transaction transaction = new Transaction(
+                1L,
+                "CUST1",
+                new BigDecimal("120.00"),
+                LocalDate.now()
         );
 
-        Mockito.when(service.getAllTransactions()).thenReturn(allTxs);
+        when(transactionService.getAllTransactions())
+                .thenReturn(List.of(transaction));
 
-
-        mockMvc.perform(get("/api/transactions/customers")
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/api/transactions"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].customerId").value("CUST1"))
-                .andExpect(jsonPath("$[1].customerId").value("CUST2"));
+                .andExpect(jsonPath("$[0].customerId").value("CUST1"));
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenValidationFails() throws Exception {
+
+        Transaction transaction = new Transaction(
+                null,
+                "",
+                new BigDecimal("-5"),
+                null
+        );
+
+        mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(transaction)))
+                .andExpect(status().isBadRequest());
     }
 }

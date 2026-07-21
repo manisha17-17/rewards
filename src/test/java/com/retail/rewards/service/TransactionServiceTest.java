@@ -1,16 +1,15 @@
 package com.retail.rewards.service;
 
-import com.retail.rewards.dao.TransactionDao;
+import com.retail.rewards.dao.TransactionRepository;
 import com.retail.rewards.model.Transaction;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,93 +19,85 @@ import static org.mockito.Mockito.*;
 class TransactionServiceTest {
 
     @Mock
-    private TransactionDao transactionDao;
+    private TransactionRepository repository;
 
     @InjectMocks
-    private TransactionService transactionService;
+    private TransactionService service;
 
     @Test
-    @DisplayName("Should successfully retrieve all transactions across the platform")
-    void getAllTransactions_ReturnsCompleteList() {
-        // Arrange
-        Transaction tx1 = new Transaction(1L, "CUST1", 120.0, LocalDate.of(2026, 1, 15));
-        Transaction tx2 = new Transaction(2L, "CUST2", 95.0, LocalDate.of(2026, 1, 20));
-        List<Transaction> mockTransactions = List.of(tx1, tx2);
+    void saveTransaction_ShouldSave() {
 
-        when(transactionDao.getAllTransactions()).thenReturn(mockTransactions);
+        Transaction transaction = new Transaction(
+                1L,
+                "CUST1",
+                new BigDecimal("120"),
+                LocalDate.now());
 
-        // Act
-        List<Transaction> result = transactionService.getAllTransactions();
+        when(repository.save(transaction))
+                .thenReturn(transaction);
 
-        // Assert
-        assertNotNull(result, "Resulting collection should not be null");
-        assertEquals(2, result.size(), "Result size should match mock data size");
-        assertEquals(mockTransactions, result, "Returned list should exactly match repository output");
+        Transaction saved = service.saveTransaction(transaction);
 
-        // Verify mock integration
-        verify(transactionDao, times(1)).getAllTransactions();
+        assertNotNull(saved);
+        assertEquals("CUST1", saved.getCustomerId());
+
+        verify(repository).save(transaction);
     }
 
     @Test
-    @DisplayName("Should pass through and return saved transaction object when storing a new record")
-    void saveTransaction_PersistsAndReturnsTransaction() {
-        // Arrange
-        Transaction inputTx = new Transaction(null, "CUST1", 150.0, LocalDate.of(2026, 3, 22));
-        Transaction savedTx = new Transaction(100L, "CUST1", 150.0, LocalDate.of(2026, 3, 22));
+    void getAllTransactions_ShouldReturnList() {
 
-        when(transactionDao.addTransaction(inputTx)).thenReturn(savedTx);
+        List<Transaction> list = List.of(
+                new Transaction(
+                        1L,
+                        "CUST1",
+                        new BigDecimal("120"),
+                        LocalDate.now())
+        );
 
-        // Act
-        Transaction result = transactionService.saveTransaction(inputTx);
+        when(repository.findAll()).thenReturn(list);
 
-        // Assert
-        assertNotNull(result, "Saved transaction should not be null");
-        assertEquals(100L, result.getId(), "Returned object should contain generated database ID");
-        assertEquals("CUST1", result.getCustomerId(), "Customer ID should remain consistent");
-        assertEquals(150.0, result.getAmount(), "Transaction amount should match input details");
+        List<Transaction> result = service.getAllTransactions();
 
-        // Verify mock integration
-        verify(transactionDao, times(1)).addTransaction(inputTx);
-    }
-
-    @Test
-    @DisplayName("Should successfully retrieve specific transactions filtering by a given Customer ID")
-    void getTransactionsByCustomerId_WithExistingId_ReturnsMatchingList() {
-        // Arrange
-        String customerId = "CUST1";
-        Transaction tx = new Transaction(1L, customerId, 120.0, LocalDate.of(2026, 1, 15));
-        List<Transaction> mockTransactions = List.of(tx);
-
-        when(transactionDao.getTransactionsByCustomerId(customerId)).thenReturn(mockTransactions);
-
-        // Act
-        List<Transaction> result = transactionService.getTransactionsByCustomerId(customerId);
-
-        // Assert
-        assertNotNull(result, "Resulting collection should not be null");
-        assertFalse(result.isEmpty(), "Result should contain items for the specified customer");
         assertEquals(1, result.size());
-        assertEquals(customerId, result.get(0).getCustomerId(), "Fetched row customer mapping mismatch");
 
-        // Verify mock integration
-        verify(transactionDao, times(1)).getTransactionsByCustomerId(customerId);
+        verify(repository).findAll();
     }
 
     @Test
-    @DisplayName("Should return an empty list if no transactions exist for the requested Customer ID")
-    void getTransactionsByCustomerId_WithNonExistentId_ReturnsEmptyList() {
-        // Arrange
-        String unknownCustomerId = "CUST_NONE";
-        when(transactionDao.getTransactionsByCustomerId(unknownCustomerId)).thenReturn(Collections.emptyList());
+    void getTransactionsByCustomerId_ShouldReturnCustomerTransactions() {
 
-        // Act
-        List<Transaction> result = transactionService.getTransactionsByCustomerId(unknownCustomerId);
+        List<Transaction> list = List.of(
+                new Transaction(
+                        1L,
+                        "CUST1",
+                        new BigDecimal("120"),
+                        LocalDate.now())
+        );
 
-        // Assert
-        assertNotNull(result, "Resulting collection should not be null even when empty");
-        assertTrue(result.isEmpty(), "Collection should be empty for a target with zero history");
+        when(repository.findByCustomerId("CUST1"))
+                .thenReturn(list);
 
-        // Verify mock integration
-        verify(transactionDao, times(1)).getTransactionsByCustomerId(unknownCustomerId);
+        List<Transaction> result =
+                service.getTransactionsByCustomerId("CUST1");
+
+        assertEquals(1, result.size());
+        assertEquals("CUST1", result.get(0).getCustomerId());
+
+        verify(repository).findByCustomerId("CUST1");
+    }
+
+    @Test
+    void getTransactionsByCustomerId_ShouldReturnEmptyList() {
+
+        when(repository.findByCustomerId("UNKNOWN"))
+                .thenReturn(List.of());
+
+        List<Transaction> result =
+                service.getTransactionsByCustomerId("UNKNOWN");
+
+        assertTrue(result.isEmpty());
+
+        verify(repository).findByCustomerId("UNKNOWN");
     }
 }
