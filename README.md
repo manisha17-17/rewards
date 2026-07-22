@@ -118,7 +118,7 @@ src
 ## Clone the Project
 
 ```bash
-git clone https://github.com/<your-repository>.git
+git clone https://github.com/manisha17-17/rewards.git
 
 cd rewards-api
 ```
